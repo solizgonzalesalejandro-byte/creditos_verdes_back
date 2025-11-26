@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/database';
-
+import router from './routes/user.routes';
 // Cargar variables de entorno
 dotenv.config();
 
@@ -33,6 +33,7 @@ const startServer = async () => {
     }
   });
 
+  app.use('/api', router);
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
