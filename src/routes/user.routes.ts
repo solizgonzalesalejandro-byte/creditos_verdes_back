@@ -76,11 +76,11 @@ router.post("/login", (req, res) => usuarioController.login(req, res));
 
 // Eliminar usuario (DELETE): por params o body
 // Ejemplo: DELETE /user/123  ó  DELETE /user  { "idusuario": 123 }
-router.delete("/user/:id?", (req, res) => usuarioController.eliminarUsuario(req, res));
+router.delete("/user/:id", (req, res) => usuarioController.eliminarUsuario(req, res));
 
 // Eliminar publicación (DELETE): por params o body
 // Ejemplo: DELETE /publicacion/456  ó  DELETE /publicacion  { "idpublicacion": 456 }
-router.delete("/publicacion/:id?", (req, res) => usuarioController.eliminarPublicacion(req, res));
+router.delete("/publicacion/:id", (req, res) => usuarioController.eliminarPublicacion(req, res));
 
 // Compra de créditos (POST)
 // Body: { usuarioId, montoBs, creditos, metodo? }
