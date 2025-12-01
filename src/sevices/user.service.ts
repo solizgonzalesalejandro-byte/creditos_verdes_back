@@ -178,4 +178,65 @@ export class UsuarioService {
     }
   }
 
+  async login(nombreUser: string, contrasenia: string, rolesSolicitados?: string[]) {
+  if (!nombreUser?.trim() || !contrasenia?.trim()) {
+    return { success: false, status: 400, message: "nombreUser y contrasenia son requeridos" };
+  }
+
+  try {
+    // 1) Buscar usuario y validar contraseña (SHA2 256)
+    const [urows]: any = await db.query(
+      `SELECT idusuario, nombre, apellido, nombreUser, billetera_id
+         FROM usuario
+        WHERE nombreUser = ? AND contrasenia = SHA2(?, 256)
+        LIMIT 1`,
+      [nombreUser, contrasenia]
+    );
+
+    if (!urows || urows.length === 0) {
+      // registrar intento fallido (sin usuario encontrado)
+      await this.registrarAcceso(nombreUser, "", "", false, "Credenciales inválidas");
+      return { success: false, status: 401, message: "Usuario o contraseña incorrectos" };
+    }
+
+    const usuario = urows[0];
+
+    // 2) Obtener roles del usuario
+    const [rrows]: any = await db.query(
+      `SELECT r.nombreRol
+         FROM usuario_rol ur
+         JOIN rol r ON r.idrol = ur.idrol
+        WHERE ur.idusuario = ?`,
+      [usuario.idusuario]
+    );
+    const rolesUsuario: string[] = (rrows || []).map((r: any) => r.nombreRol);
+
+    // 3) Si el cliente envió roles solicitados, verificar intersección
+    if (Array.isArray(rolesSolicitados) && rolesSolicitados.length > 0) {
+      const tieneAlguno = rolesSolicitados.some((rol) => rolesUsuario.includes(rol));
+      if (!tieneAlguno) {
+        await this.registrarAcceso(nombreUser, "", "", false, "Roles no autorizados");
+        return { success: false, status: 403, message: "No tienes los roles requeridos" };
+      }
+    }
+
+    // 4) Registrar acceso exitoso y devolver datos
+    await this.registrarAcceso(nombreUser, "", "", true, "Login OK");
+
+    return {
+      success: true,
+      usuario: {
+        idusuario: usuario.idusuario,
+        nombre: usuario.nombre,
+        apellido: usuario.apellido,
+        nombreUser: usuario.nombreUser,
+        billetera_id: usuario.billetera_id,
+      },
+      roles: rolesUsuario,
+    };
+  } catch (err: any) {
+    console.error("UsuarioService.login error:", err);
+    return { success: false, status: 500, message: "Error interno" };
+  }
+}
 }
