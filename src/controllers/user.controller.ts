@@ -200,6 +200,49 @@ export class UsuarioController {
     }
   }
 
+  async login(req: Request, res: Response) {
+    try {
+      // Aceptar distintos nombres de campo (frontend puede usar 'user'/'password' o 'nombreUser'/'contrasenia')
+      const body = req.body || {};
+      const nombreUser = (body.nombreUser || body.user || "").toString();
+      const contrasenia = (body.contrasenia || body.password || "").toString();
+      const roles = Array.isArray(body.roles) ? body.roles : (body.roles ? [body.roles] : []);
+
+      // ip y userAgent para registrar bitácora
+      const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim()
+        || (req.socket && (req.socket.remoteAddress as string)) || "";
+      const userAgent = req.headers["user-agent"] || "";
+
+      // Llamada al service
+      const result = await usuarioService.login(nombreUser, contrasenia, roles);
+
+      // Si hubo error controlado
+      if (!result.success) {
+        // Registrar acceso fallido con motivo desde service (si quieres)
+        await usuarioService.registrarAcceso(nombreUser, ip, userAgent, false, result.message || "Login fallido");
+
+        return res.status(result.status || 400).json({
+          success: false,
+          message: result.message || "Error al iniciar sesión",
+        });
+      }
+
+      // Login OK: registrar acceso exitoso con ip/ua
+      await usuarioService.registrarAcceso(nombreUser, ip, userAgent, true, "Login OK");
+
+      // Responder con info mínima (no enviar contraseña)
+      return res.json({
+        success: true,
+        usuario: result.usuario,
+        roles: result.roles,
+      });
+
+    } catch (err: any) {
+      console.error("UsuarioController.login error:", err);
+      return res.status(500).json({ success: false, message: "Error interno" });
+    }
+  }
+
   async getStoredProcedures(req: Request, res: Response) {
     try {
       const schema = String(req.query.schema || "mydb");

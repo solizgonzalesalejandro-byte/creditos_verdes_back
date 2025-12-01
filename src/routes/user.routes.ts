@@ -71,4 +71,7 @@ router.get("/compras/creditos", usuarioController.getCompraCreditos.bind(usuario
 router.get("/bitacora/intercambio", usuarioController.getBitacoraIntercambio.bind(usuarioController));
 router.get("/bitacora/usuario", usuarioController.getBitacoraUsuario.bind(usuarioController));
 
+// router file, por ejemplo routes/usuario.routes.ts o similar
+router.post("/login", (req, res) => usuarioController.login(req, res));
+
 export default router;
