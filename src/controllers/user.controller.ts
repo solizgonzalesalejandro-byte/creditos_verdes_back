@@ -447,5 +447,133 @@ export class UsuarioController {
     }
   }
 
+  // DELETE /user/:id   OR body { idusuario }
+async eliminarUsuario(req: Request, res: Response) {
+  try {
+    // permitir id por params o body
+    const idParam = req.params.id || req.body.idusuario || req.body.id;
+    const idusuario = Number(idParam);
+    if (!idusuario || Number.isNaN(idusuario)) {
+      return res.status(400).json({ success: false, message: "p_idusuario es requerido y debe ser numérico" });
+    }
+
+    // Llamada al service (asume que usuarioService.eliminarUsuario está implementado)
+    const result = await usuarioService.eliminarUsuario(idusuario);
+
+    return res.json({ success: true, data: result });
+  } catch (err: any) {
+    console.error("Error eliminarUsuario:", err);
+    const msg = err?.message || "Error al eliminar usuario";
+    // Si SP lanzó SIGNAL con texto claro, lo devolvemos
+    return res.status(500).json({ success: false, message: msg });
+  }
+}
+
+// DELETE /publicacion/:id   OR body { idpublicacion }
+async eliminarPublicacion(req: Request, res: Response) {
+  try {
+    const idParam = req.params.id || req.body.idpublicacion || req.body.id;
+    const idpublicacion = Number(idParam);
+    if (!idpublicacion || Number.isNaN(idpublicacion)) {
+      return res.status(400).json({ success: false, message: "p_idpublicacion es requerido y debe ser numérico" });
+    }
+
+    const result = await usuarioService.eliminarPublicacion(idpublicacion);
+    return res.json({ success: true, data: result });
+  } catch (err: any) {
+    console.error("Error eliminarPublicacion:", err);
+    const msg = err?.message || "Error al eliminar publicación";
+    return res.status(500).json({ success: false, message: msg });
+  }
+}
+
+// POST /compras/creditos
+async compraCreditos(req: Request, res: Response) {
+  try {
+    const { usuarioId, montoBs, creditos, metodo } = req.body;
+    if (![usuarioId, montoBs, creditos].every((v) => v !== undefined && v !== null && v !== '')) {
+      return res.status(400).json({ success: false, message: "usuarioId, montoBs y creditos son requeridos" });
+    }
+
+    const usuarioIdN = Number(usuarioId);
+    const montoN = Number(montoBs);
+    const creditosN = Number(creditos);
+    if ([usuarioIdN, montoN, creditosN].some((n) => Number.isNaN(n))) {
+      return res.status(400).json({ success: false, message: "Parámetros numéricos inválidos" });
+    }
+
+    const metodoStr = String(metodo ?? "tarjeta");
+
+    const result = await usuarioService.compraCreditos(usuarioIdN, montoN, creditosN, metodoStr);
+
+    return res.json({ success: true, data: result });
+  } catch (err: any) {
+    console.error("Error compraCreditos:", err);
+    return res.status(500).json({ success: false, message: err?.message || "Error al comprar créditos" });
+  }
+}
+
+// GET /buscar/publicaciones?texto=...&categoria=...&offset=0&limit=50
+async buscarPublicaciones(req: Request, res: Response) {
+  try {
+    const texto = (req.query.texto as string) ?? (req.query.q as string) ?? null;
+    const categoria = (req.query.categoria as string) ?? null;
+    const offset = Number(req.query.offset ?? 0);
+    const limit = Number(req.query.limit ?? 50);
+
+    if (offset < 0 || Number.isNaN(offset) || limit <= 0 || Number.isNaN(limit)) {
+      return res.status(400).json({ success: false, message: "offset/limit inválidos" });
+    }
+
+    const rows = await usuarioService.buscarPublicaciones(texto, categoria, offset, limit);
+    // rows puede ser array de resultados ya
+    return res.json({ success: true, data: rows, count: Array.isArray(rows) ? rows.length : undefined });
+  } catch (err: any) {
+    console.error("Error buscarPublicaciones:", err);
+    return res.status(500).json({ success: false, message: err?.message || "Error buscando publicaciones" });
+  }
+}
+
+// PUT /publicacion  (body con idpublicacion y campos a modificar)
+async modificarPublicacion(req: Request, res: Response) {
+  try {
+    const {
+      idpublicacion,
+      titulo,
+      descripcion,
+      valorCredito,
+      estado,
+      foto
+    } = req.body;
+
+    if (!idpublicacion) {
+      return res.status(400).json({ success: false, message: "p_idpublicacion es requerido" });
+    }
+
+    const id = Number(idpublicacion);
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ success: false, message: "p_idpublicacion debe ser numérico" });
+    }
+
+    const valorN = valorCredito !== undefined && valorCredito !== null && valorCredito !== '' ? Number(valorCredito) : null;
+    if (valorCredito !== undefined && valorCredito !== null && valorCredito !== '' && Number.isNaN(valorN)) {
+      return res.status(400).json({ success: false, message: "valorCredito inválido" });
+    }
+
+    const result = await usuarioService.modificarPublicacion(
+      id,
+      titulo ?? null,
+      descripcion ?? null,
+      valorN,
+      estado ?? null,
+      foto ?? null
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (err: any) {
+    console.error("Error modificarPublicacion:", err);
+    return res.status(500).json({ success: false, message: err?.message || "Error al modificar publicación" });
+  }
+}
 
 }

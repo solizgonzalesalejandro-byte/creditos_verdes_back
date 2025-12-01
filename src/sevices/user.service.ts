@@ -571,4 +571,80 @@ async getBitacoraUsuario(limit: number = 200) {
   }
 }
 
+// Eliminar usuario por id
+async eliminarUsuario(idusuario: number) {
+  if (!idusuario) throw new Error('p_idusuario es requerido');
+  try {
+    await db.query(`CALL sp_eliminar_usuario(?)`, [idusuario]);
+    return { success: true, message: 'Usuario eliminado' };
+  } catch (err: any) {
+    throw new Error(err?.message ?? 'Error en sp_eliminar_usuario');
+  }
+}
+
+// Eliminar publicacion por id
+async eliminarPublicacion(idpublicacion: number) {
+  if (!idpublicacion) throw new Error('p_idpublicacion es requerido');
+  try {
+    await db.query(`CALL sp_eliminar_publicacion(?)`, [idpublicacion]);
+    return { success: true, message: 'Publicación eliminada' };
+  } catch (err: any) {
+    throw new Error(err?.message ?? 'Error en sp_eliminar_publicacion');
+  }
+}
+
+// Compra de créditos (llama el SP sp_compra_creditos y devuelve idcompra)
+async compraCreditos(usuarioId: number, montoBs: number, creditos: number, metodo: string = 'tarjeta') {
+  if (!usuarioId || !montoBs || !creditos) throw new Error('Parámetros inválidos');
+  try {
+    // El SP al final hace: SELECT v_idcomp AS idcompra;
+    const [rows]: any = await db.query(`CALL sp_compra_creditos(?, ?, ?, ?)`, [
+      usuarioId,
+      montoBs,
+      creditos,
+      metodo,
+    ]);
+    // Dependiendo del driver rows puede venir anidado. Normalmente rows[0] contiene el SELECT devuelto.
+    const idcompra = rows?.[0]?.idcompra ?? rows?.idcompra ?? null;
+    return { success: true, idcompra };
+  } catch (err: any) {
+    throw new Error(err?.message ?? 'Error en sp_compra_creditos');
+  }
+}
+
+// Buscar publicaciones (wrapper para sp_buscar_publicaciones)
+async buscarPublicaciones(texto: string | null, categoria: string | null, offset = 0, limit = 50) {
+  try {
+    const [rows]: any = await db.query(
+      `CALL sp_buscar_publicaciones(?, ?, ?, ?)`,
+      [texto ?? null, categoria ?? null, offset, limit]
+    );
+    // sp_buscar_publicaciones devuelve un result set; según driver puede venir en rows[0]
+    return rows?.[0] ?? rows;
+  } catch (err: any) {
+    throw new Error(err?.message ?? 'Error en sp_buscar_publicaciones');
+  }
+}
+
+// Modificar publicacion (wrapper para sp_modificar_publicacion)
+async modificarPublicacion(
+  idpublicacion: number,
+  titulo?: string | null,
+  descripcion?: string | null,
+  valorCredito?: number | null,
+  estado?: string | null,
+  foto?: string | null
+) {
+  if (!idpublicacion) throw new Error('p_idpublicacion es requerido');
+  try {
+    await db.query(
+      `CALL sp_modificar_publicacion(?, ?, ?, ?, ?, ?)`,
+      [idpublicacion, titulo ?? null, descripcion ?? null, valorCredito ?? null, estado ?? null, foto ?? null]
+    );
+    return { success: true, message: 'Publicación modificada' };
+  } catch (err: any) {
+    throw new Error(err?.message ?? 'Error en sp_modificar_publicacion');
+  }
+}
+
 }
