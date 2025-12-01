@@ -200,4 +200,209 @@ export class UsuarioController {
     }
   }
 
+  async getStoredProcedures(req: Request, res: Response) {
+    try {
+      const schema = String(req.query.schema || "mydb");
+      const rows = await usuarioService.getStoredProcedures(schema);
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getStoredProcedures:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando procedimientos" });
+    }
+  }
+
+  // ==================================================
+  // GET /usuarios/roles
+  // ==================================================
+  async getUsuariosConRoles(req: Request, res: Response) {
+    try {
+      const rows = await usuarioService.getUsuariosConRoles();
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getUsuariosConRoles:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando usuarios con roles" });
+    }
+  }
+
+  // ==================================================
+  // GET /impacto/por-titulo?titulo=...
+  // ==================================================
+  async getImpactoPorTitulo(req: Request, res: Response) {
+    try {
+      const titulo = String(req.query.titulo || "");
+      if (!titulo) return res.status(400).json({ success:false, message: "titulo es requerido" });
+      const rows = await usuarioService.getImpactoPorTitulo(titulo);
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getImpactoPorTitulo:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando impacto por titulo" });
+    }
+  }
+
+  // ==================================================
+  // GET /publicaciones
+  // ==================================================
+  async getPublicaciones(req: Request, res: Response) {
+    try {
+      const rows = await usuarioService.getPublicaciones();
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getPublicaciones:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando publicaciones" });
+    }
+  }
+
+  // ==================================================
+  // GET /publicaciones/impacto/search?term=solar
+  // ==================================================
+  async searchPublicacionesImpacto(req: Request, res: Response) {
+    try {
+      const term = String(req.query.term || req.query.termino || "");
+      if (!term) return res.status(400).json({ success:false, message: "term es requerido" });
+      const rows = await usuarioService.searchPublicacionesImpacto(term);
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error searchPublicacionesImpacto:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error buscando publicaciones impacto" });
+    }
+  }
+
+  // ==================================================
+  // GET /intercambios/pendientes
+  // ==================================================
+  async getIntercambiosPendientes(req: Request, res: Response) {
+    try {
+      const rows = await usuarioService.getIntercambiosPendientes();
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getIntercambiosPendientes:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando intercambios pendientes" });
+    }
+  }
+
+  // ==================================================
+  // GET /impacto/usuarios
+  // ==================================================
+  async getImpactoUsuarios(req: Request, res: Response) {
+    try {
+      const rows = await usuarioService.getImpactoUsuarios();
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getImpactoUsuarios:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando impacto usuarios" });
+    }
+  }
+
+  // ==================================================
+  // GET /usuarios/mas-ecologicos
+  // ==================================================
+  async getUsuariosMasEcologicos(req: Request, res: Response) {
+    try {
+      const rows = await usuarioService.getUsuariosMasEcologicos();
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getUsuariosMasEcologicos:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando usuarios mas ecologicos" });
+    }
+  }
+
+  // ==================================================
+  // GET /compras/completadas
+  // ==================================================
+  async getComprasCompletadas(req: Request, res: Response) {
+    try {
+      const rows = await usuarioService.getComprasCompletadas();
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getComprasCompletadas:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando compras completadas" });
+    }
+  }
+
+  // ==================================================
+  // GET /bitacora/acceso?limit=200
+  // ==================================================
+  async getBitacoraAcceso(req: Request, res: Response) {
+    try {
+      const limit = Number(req.query.limit || 200);
+      const rows = await usuarioService.getBitacoraAcceso(limit);
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getBitacoraAcceso:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando bitacora acceso" });
+    }
+  }
+
+  // ==================================================
+  // GET /historico/consolidado?limit=200
+  // ==================================================
+  async getHistoricoConsolidado(req: Request, res: Response) {
+    try {
+      const limit = Number(req.query.limit || 200);
+      const rows = await usuarioService.getHistoricoConsolidado(limit);
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getHistoricoConsolidado:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando historico consolidado" });
+    }
+  }
+
+  // ==================================================
+  // GET /billetera/extracto?nombreUser=ale1234&limit=200
+  // ==================================================
+  async getExtractoBilletera(req: Request, res: Response) {
+    try {
+      const nombreUser = String(req.query.nombreUser || req.query.user || "");
+      const limit = Number(req.query.limit || 200);
+      if (!nombreUser) return res.status(400).json({ success:false, message: "nombreUser es requerido" });
+      const rows = await usuarioService.getExtractoBilletera(nombreUser, limit);
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getExtractoBilletera:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando extracto billetera" });
+    }
+  }
+
+  // ==================================================
+  // GET /compras/creditos
+  // ==================================================
+  async getCompraCreditos(req: Request, res: Response) {
+    try {
+      const rows = await usuarioService.getCompraCreditos();
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getCompraCreditos:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando compra creditos" });
+    }
+  }
+
+  // ==================================================
+  // GET /bitacora/intercambio?limit=200
+  // ==================================================
+  async getBitacoraIntercambio(req: Request, res: Response) {
+    try {
+      const limit = Number(req.query.limit || 200);
+      const rows = await usuarioService.getBitacoraIntercambio(limit);
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getBitacoraIntercambio:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando bitacora intercambio" });
+    }
+  }
+
+  // ==================================================
+  // GET /bitacora/usuario?limit=200
+  // ==================================================
+  async getBitacoraUsuario(req: Request, res: Response) {
+    try {
+      const limit = Number(req.query.limit || 200);
+      const rows = await usuarioService.getBitacoraUsuario(limit);
+      return res.json({ success: true, data: rows, count: rows.length });
+    } catch (err: any) {
+      console.error("Error getBitacoraUsuario:", err);
+      return res.status(500).json({ success:false, message: err.message || "Error consultando bitacora usuario" });
+    }
+  }
+
+
 }

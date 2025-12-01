@@ -28,4 +28,47 @@ router.post("/compra/iniciar", usuarioController.iniciarCompraConCreditoVerde.bi
 router.post("/compra/liberar", usuarioController.liberarPagoConCreditoVerde.bind(usuarioController));
 router.post("/intercambio/cancelar", usuarioController.cancelarIntercambioActor.bind(usuarioController));
 
+// Obtener lista de procedimientos almacenados (opcional: ?schema=mydb)
+router.get("/procedures", usuarioController.getStoredProcedures.bind(usuarioController));
+
+// Usuarios con roles y saldo de billetera
+router.get("/usuarios/roles", usuarioController.getUsuariosConRoles.bind(usuarioController));
+
+// Impacto por titulo (query: ?titulo=...)
+router.get("/impacto/por-titulo", usuarioController.getImpactoPorTitulo.bind(usuarioController));
+
+// Listar publicaciones
+router.get("/publicaciones", usuarioController.getPublicaciones.bind(usuarioController));
+
+// Buscar publicaciones en la vista de impacto (query: ?term=solar)
+router.get("/publicaciones/impacto/search", usuarioController.searchPublicacionesImpacto.bind(usuarioController));
+
+// Intercambios pendientes / en_proceso
+router.get("/intercambios/pendientes", usuarioController.getIntercambiosPendientes.bind(usuarioController));
+
+// Impacto agregado por usuarios
+router.get("/impacto/usuarios", usuarioController.getImpactoUsuarios.bind(usuarioController));
+
+// Usuarios más ecológicos
+router.get("/usuarios/mas-ecologicos", usuarioController.getUsuariosMasEcologicos.bind(usuarioController));
+
+// Compras / intercambios completados
+router.get("/compras/completadas", usuarioController.getComprasCompletadas.bind(usuarioController));
+
+// Bitácora de acceso (query: ?limit=200)
+router.get("/bitacora/acceso", usuarioController.getBitacoraAcceso.bind(usuarioController));
+
+// Histórico consolidado (query: ?limit=200)
+router.get("/historico/consolidado", usuarioController.getHistoricoConsolidado.bind(usuarioController));
+
+// Extracto de billetera por nombreUser (query: ?nombreUser=ale1234&limit=200)
+router.get("/billetera/extracto", usuarioController.getExtractoBilletera.bind(usuarioController));
+
+// Historial de compra de créditos
+router.get("/compras/creditos", usuarioController.getCompraCreditos.bind(usuarioController));
+
+// Bitácoras: intercambio y usuario (query: ?limit=200)
+router.get("/bitacora/intercambio", usuarioController.getBitacoraIntercambio.bind(usuarioController));
+router.get("/bitacora/usuario", usuarioController.getBitacoraUsuario.bind(usuarioController));
+
 export default router;
