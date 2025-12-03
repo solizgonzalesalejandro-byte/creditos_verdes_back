@@ -692,4 +692,22 @@ async crearPublicacionSimple(req: Request, res: Response) {
   }
 }
 
+  // controllers/user.controller.ts (dentro de export class UsuarioController { ... })
+async getPerfilConsolidado(req: Request, res: Response) {
+  try {
+    const idParam = req.query.idusuario || req.query.id || req.body.idusuario || req.body.id;
+    const idusuario = Number(idParam);
+    if (!idusuario || Number.isNaN(idusuario)) {
+      return res.status(400).json({ success: false, message: "idusuario es requerido y debe ser numérico" });
+    }
+
+    const result = await usuarioService.getPerfilConsolidadoById(idusuario);
+    return res.json({ success: true, data: result });
+  } catch (err: any) {
+    console.error("Error getPerfilConsolidado:", err);
+    return res.status(500).json({ success: false, message: err?.message || "Error consultando perfil consolidado" });
+  }
+}
+
+
 }

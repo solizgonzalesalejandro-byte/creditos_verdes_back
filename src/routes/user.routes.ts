@@ -100,4 +100,7 @@ router.get("/views", usuarioController.listViews.bind(usuarioController));
 
 router.post("/publicacion", (req, res) => usuarioController.crearPublicacionSimple(req, res));
 
+// router file (añádelo con las otras rutas)
+router.get("/perfil/me", usuarioController.getPerfilConsolidado.bind(usuarioController));
+
 export default router;

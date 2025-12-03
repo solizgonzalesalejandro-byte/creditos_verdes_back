@@ -740,5 +740,162 @@ async modificarPublicacion(
   }
 }
   
+  // services/usuario.service.ts (dentro de export class UsuarioService { ... })
+/**
+ * Devuelve un perfil consolidado usando idusuario (preferible frente a nombreUser).
+ * Usa vistas útiles: v_publicaciones_impacto, v_extracto_billetera, v_impacto_semana, v_ranking_usuarios
+ */
+async getPerfilConsolidadoById(idusuario: number) {
+  if (!idusuario || Number.isNaN(Number(idusuario))) {
+    throw new Error("idusuario es requerido y debe ser numérico");
+  }
+
+  try {
+    // 1) usuario + roles + saldo
+    const [uRows]: any = await db.query(
+      `SELECT u.idusuario,
+              CONCAT(u.nombre,' ',u.apellido) AS nombre_completo,
+              u.nombreUser,
+              b.saldoActual AS saldo_billetera,
+              u.billetera_id
+       FROM usuario u
+       LEFT JOIN billetera b ON u.billetera_id = b.idbilletera
+       WHERE u.idusuario = ? LIMIT 1`,
+      [idusuario]
+    );
+    const usuario = (uRows && uRows[0]) ? uRows[0] : null;
+
+    // roles
+    const [rRows]: any = await db.query(
+      `SELECT r.nombreRol
+       FROM usuario_rol ur
+       JOIN rol r ON r.idrol = ur.idrol
+       WHERE ur.idusuario = ?`,
+      [idusuario]
+    );
+    const roles: string[] = (rRows || []).map((r: any) => r.nombreRol);
+
+    // 2) impacto (reporte)
+    const [impRows]: any = await db.query(
+      `SELECT CO2, Energia, Agua, (IFNULL(CO2,0)+IFNULL(Energia,0)+IFNULL(Agua,0)) AS impactoTotal
+       FROM reporte
+       WHERE usuario_id = ? LIMIT 1`,
+      [idusuario]
+    );
+    const impacto = (impRows && impRows[0]) ? impRows[0] : { CO2: 0, Energia: 0, Agua: 0, impactoTotal: 0 };
+
+    // 3) publicaciones del usuario (usa v_publicaciones_impacto para impacto calculado)
+    const [pubRows]: any = await db.query(
+      `SELECT p.idpublicacion, p.titulo, p.descripcion, p.valorCredito, p.estadoPublica, p.fechaPublicacion, p.foto,
+              v.impactoTotal, v.impactoCO2, v.impactoEnergia, v.impactoAgua
+       FROM publicacion p
+       LEFT JOIN v_publicaciones_impacto v ON v.idpublicacion = p.idpublicacion
+       WHERE p.usuario_id = ?
+       ORDER BY p.fechaPublicacion DESC
+       LIMIT 200`,
+      [idusuario]
+    );
+
+    // 4) intercambios pendientes relacionados al usuario (comprador o vendedor)
+    const [intRows]: any = await db.query(
+      `SELECT i.idintercambio, i.usuario_origen_id, i.usuario_destino_id, i.cantidad, i.creditoVerde,
+              i.estadoIntercam, i.fechaCreacion, p.idpublicacion, p.titulo AS publicacion,
+              u1.nombreUser AS comprador, u2.nombreUser AS vendedor
+       FROM intercambio i
+       LEFT JOIN publicacion p ON i.publicacion_id = p.idpublicacion
+       LEFT JOIN usuario u1 ON i.usuario_origen_id = u1.idusuario
+       LEFT JOIN usuario u2 ON i.usuario_destino_id = u2.idusuario
+       WHERE (i.usuario_origen_id = ? OR i.usuario_destino_id = ?) 
+         AND i.estadoIntercam IN ('pendiente','en_proceso')
+       ORDER BY i.fechaCreacion DESC`,
+      [idusuario, idusuario]
+    );
+
+    // 5) compras completadas (como comprador o vendedor)
+    const [compRows]: any = await db.query(
+      `SELECT i.idintercambio, i.usuario_origen_id, i.usuario_destino_id, i.cantidad, i.creditoVerde,
+              i.estadoIntercam, i.fechaCreacion, i.fechaFinal, p.idpublicacion, p.titulo AS publicacion,
+              u1.nombreUser AS comprador, u2.nombreUser AS vendedor
+       FROM intercambio i
+       LEFT JOIN publicacion p ON i.publicacion_id = p.idpublicacion
+       LEFT JOIN usuario u1 ON i.usuario_origen_id = u1.idusuario
+       LEFT JOIN usuario u2 ON i.usuario_destino_id = u2.idusuario
+       WHERE (i.usuario_origen_id = ? OR i.usuario_destino_id = ?) 
+         AND i.estadoIntercam = 'completado'
+       ORDER BY i.fechaFinal DESC
+       LIMIT 200`,
+      [idusuario, idusuario]
+    );
+
+    // 6) extracto de billetera (vista v_extracto_billetera) — la vista tiene nombreUser; necesitamos nombreUser del usuario
+    const nombreUser = usuario?.nombreUser ?? null;
+    let extracto: any[] = [];
+    if (nombreUser) {
+      const [extRows]: any = await db.query(
+        `SELECT * FROM v_extracto_billetera WHERE nombreUser = ? ORDER BY fechaMovimiento DESC LIMIT 200`,
+        [nombreUser]
+      );
+      extracto = extRows || [];
+    }
+
+    // 7) ultimo acceso (bitacora_acceso) — la tabla guarda campo 'usuario' = nombreUser
+    let ultimoAcceso: any = null;
+    if (nombreUser) {
+      const [baRows]: any = await db.query(
+        `SELECT usuario, ip, user_agent, exito, motivo, fecha 
+         FROM bitacora_acceso 
+         WHERE usuario = ? 
+         ORDER BY fecha DESC LIMIT 1`,
+        [nombreUser]
+      );
+      ultimoAcceso = (baRows && baRows[0]) ? baRows[0] : null;
+    }
+
+    // 8) impacto por semana — usar vista v_impacto_semana (puede devolver varias semanas)
+    const [impSemRows]: any = await db.query(
+      `SELECT semana_inicio, co2, energia, agua FROM v_impacto_semana ORDER BY semana_inicio DESC LIMIT 8`
+    );
+    const impactoSemana = impSemRows || [];
+
+    // 9) ranking / actividad del usuario usando v_ranking_usuarios (si existe)
+    let rankingRow: any = null;
+    try {
+      const [rankRows]: any = await db.query(
+        `SELECT * FROM v_ranking_usuarios WHERE idusuario = ? LIMIT 1`,
+        [idusuario]
+      );
+      rankingRow = (rankRows && rankRows[0]) ? rankRows[0] : null;
+    } catch (e) {
+      // si la vista no existe, ignorar y seguir
+      rankingRow = null;
+    }
+
+    // 10) resumen rápido: counts
+    const publicacionesCount = Array.isArray(pubRows) ? pubRows.length : 0;
+    const pendientesCount = Array.isArray(intRows) ? intRows.length : 0;
+    const completadasCount = Array.isArray(compRows) ? compRows.length : 0;
+
+    return {
+      usuario,
+      roles,
+      impacto,
+      publicaciones: pubRows || [],
+      intercambiosPendientes: intRows || [],
+      comprasCompletadas: compRows || [],
+      extracto,
+      ultimoAcceso,
+      impactoSemana,
+      ranking: rankingRow,
+      resumen: {
+        publicacionesCount,
+        pendientesCount,
+        completadasCount
+      }
+    };
+  } catch (err: any) {
+    throw new Error(err?.message ?? "Error en getPerfilConsolidadoById");
+  }
+}
+
 
 }
