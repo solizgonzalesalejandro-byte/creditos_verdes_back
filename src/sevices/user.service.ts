@@ -703,4 +703,42 @@ async modificarPublicacion(
     }
   }
 
+  async crearPublicacionSimple(
+  usuarioId: number,
+  titulo: string,
+  descripcion: string | null,
+  valorCredito: number | null,
+  estadoPublica: string | null = 'activa',
+  foto: string | null = null,
+  promocionId: number | null = null,
+  reporteId: number | null = null
+) {
+  if (!usuarioId) throw new Error('usuarioId requerido');
+  if (!titulo?.trim()) throw new Error('titulo requerido');
+
+  try {
+    const sql = `
+      INSERT INTO publicacion
+        (usuario_id, promocion_id, reporte_id, titulo, descripcion, valorCredito, fechaPublicacion, estadoPublica, foto)
+      VALUES (?, ?, ?, ?, ?, ?, CURDATE(), ?, ?)
+    `;
+
+    const [result]: any = await db.query(sql, [
+      usuarioId,
+      promocionId,
+      reporteId,
+      titulo,
+      descripcion,
+      valorCredito,
+      estadoPublica,
+      foto,
+    ]);
+
+    return { idpublicacion: result.insertId };
+  } catch (err: any) {
+    throw new Error(err?.message ?? "Error creando publicación");
+  }
+}
+  
+
 }

@@ -98,4 +98,6 @@ router.get("/ranking/usuarios", usuarioController.getRankingUsuariosView.bind(us
 router.get("/ranking/top10", usuarioController.getTop10RankingView.bind(usuarioController));
 router.get("/views", usuarioController.listViews.bind(usuarioController));
 
+router.post("/publicacion", (req, res) => usuarioController.crearPublicacionSimple(req, res));
+
 export default router;

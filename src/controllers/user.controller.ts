@@ -644,5 +644,52 @@ async modificarPublicacion(req: Request, res: Response) {
     }
   }
 
+  // POST /publicacion
+async crearPublicacionSimple(req: Request, res: Response) {
+  try {
+    const {
+      usuarioId,
+      titulo,
+      descripcion,
+      valorCredito,
+      estadoPublica,
+      foto,
+      promocionId,
+      reporteId
+    } = req.body;
+
+    // Validaciones básicas
+    if (!usuarioId) return res.status(400).json({ success: false, message: "usuarioId es requerido" });
+    if (!titulo || !String(titulo).trim()) return res.status(400).json({ success: false, message: "titulo es requerido" });
+
+    const usuarioIdN = Number(usuarioId);
+    if (Number.isNaN(usuarioIdN)) return res.status(400).json({ success: false, message: "usuarioId debe ser numérico" });
+
+    const valorN = (valorCredito !== undefined && valorCredito !== null && valorCredito !== '') ? Number(valorCredito) : null;
+    if (valorCredito !== undefined && valorCredito !== null && valorCredito !== '' && Number.isNaN(valorN)) {
+      return res.status(400).json({ success: false, message: "valorCredito inválido" });
+    }
+
+    const promocionIdN = promocionId ? Number(promocionId) : null;
+    const reporteIdN = reporteId ? Number(reporteId) : null;
+
+    // Llamada al service (asegúrate que el método exista)
+    const result = await usuarioService.crearPublicacionSimple(
+      usuarioIdN,
+      String(titulo),
+      descripcion ?? null,
+      valorN,
+      estadoPublica ?? 'activa',
+      foto ?? null,
+      promocionIdN,
+      reporteIdN
+    );
+
+    return res.status(201).json({ success: true, message: "Publicación creada", data: result });
+  } catch (err: any) {
+    console.error("Error crearPublicacionSimple:", err);
+    return res.status(500).json({ success: false, message: err?.message || "Error creando publicación" });
+  }
+}
 
 }
