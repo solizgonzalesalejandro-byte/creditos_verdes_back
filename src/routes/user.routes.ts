@@ -19,8 +19,7 @@ router.get("/users", (req, res) =>
   usuarioController.getAllUsers(req, res)
 );
 
-router.put('/cancelarCompra',(req, res) =>
-  usuarioController.cancelarIntercambioActor(req, res));
+router.put('/cancelarCompra',(req, res) => usuarioController.cancelarIntercambioActor(req, res));
 router.post("/usuario/upsert-reporte", usuarioController.upsertReporte.bind(usuarioController));
 router.post("/publicacion/con-impacto", usuarioController.publicarConImpacto.bind(usuarioController));
 router.post("/usuario/recargar-billetera", usuarioController.recargarBilletera.bind(usuarioController));
@@ -93,5 +92,10 @@ router.get("/buscar/publicaciones", (req, res) => usuarioController.buscarPublic
 // Modificar publicación (PUT)
 // Body: { idpublicacion, titulo?, descripcion?, valorCredito?, estado?, foto? }
 router.put("/publicacion", (req, res) => usuarioController.modificarPublicacion(req, res));
+
+router.get("/impacto/semana", usuarioController.getImpactoSemana.bind(usuarioController));
+router.get("/ranking/usuarios", usuarioController.getRankingUsuariosView.bind(usuarioController));
+router.get("/ranking/top10", usuarioController.getTop10RankingView.bind(usuarioController));
+router.get("/views", usuarioController.listViews.bind(usuarioController));
 
 export default router;

@@ -646,5 +646,61 @@ async modificarPublicacion(
     throw new Error(err?.message ?? 'Error en sp_modificar_publicacion');
   }
 }
+  // ============================================
+  // OBTENER IMPACTO POR SEMANA (vista v_impacto_semana)
+  // ============================================
+  async getImpactoSemana() {
+    try {
+      const sql = `SELECT * FROM v_impacto_semana ORDER BY semana_inicio DESC`;
+      const [rows]: any = await db.query(sql);
+      return rows;
+    } catch (err: any) {
+      throw new Error(err?.message ?? 'Error en getImpactoSemana');
+    }
+  }
+
+  // ============================================
+  // OBTENER RANKING DE USUARIOS (vista v_ranking_usuarios)
+  // ============================================
+  async getRankingUsuariosView() {
+    try {
+      const sql = `SELECT * FROM v_ranking_usuarios ORDER BY bs_liberados DESC, ventas DESC, pubs DESC`;
+      const [rows]: any = await db.query(sql);
+      return rows;
+    } catch (err: any) {
+      throw new Error(err?.message ?? 'Error en getRankingUsuariosView');
+    }
+  }
+
+  // ============================================
+  // OBTENER TOP10 RANKING (vista top10_ranking)
+  // ============================================
+  async getTop10RankingView() {
+    try {
+      const sql = `SELECT * FROM top10_ranking`;
+      const [rows]: any = await db.query(sql);
+      return rows;
+    } catch (err: any) {
+      throw new Error(err?.message ?? 'Error en getTop10RankingView');
+    }
+  }
+
+  // ============================================
+  // LISTAR VISTAS EN UN SCHEMA (INFORMATION_SCHEMA.VIEWS)
+  // ============================================
+  async listViews(schema: string = 'mydb') {
+    try {
+      const sql = `
+        SELECT TABLE_NAME AS vista, VIEW_DEFINITION
+        FROM INFORMATION_SCHEMA.VIEWS
+        WHERE TABLE_SCHEMA = ?
+        ORDER BY TABLE_NAME
+      `;
+      const [rows]: any = await db.query(sql, [schema]);
+      return rows;
+    } catch (err: any) {
+      throw new Error(err?.message ?? 'Error consultando vistas en INFORMATION_SCHEMA.VIEWS');
+    }
+  }
 
 }

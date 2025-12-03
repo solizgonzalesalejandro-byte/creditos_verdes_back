@@ -576,4 +576,73 @@ async modificarPublicacion(req: Request, res: Response) {
   }
 }
 
+    // ==================================================
+  // GET /impacto/semana
+  // ==================================================
+  async getImpactoSemana(req: Request, res: Response) {
+    try {
+      const rows = await usuarioService.getImpactoSemana();
+      const response: ApiResponse<typeof rows> = {
+        success: true,
+        data: rows,
+        count: Array.isArray(rows) ? rows.length : 0
+      };
+      return res.json(response);
+    } catch (err: any) {
+      console.error("Error getImpactoSemana:", err);
+      return res.status(500).json({ success: false, message: err?.message || "Error consultando impacto por semana" });
+    }
+  }
+
+  // ==================================================
+  // GET /ranking/usuarios
+  // ==================================================
+  async getRankingUsuariosView(req: Request, res: Response) {
+    try {
+      const rows = await usuarioService.getRankingUsuariosView();
+      const response: ApiResponse<typeof rows> = {
+        success: true,
+        data: rows,
+        count: Array.isArray(rows) ? rows.length : 0
+      };
+      return res.json(response);
+    } catch (err: any) {
+      console.error("Error getRankingUsuariosView:", err);
+      return res.status(500).json({ success: false, message: err?.message || "Error consultando ranking de usuarios" });
+    }
+  }
+
+  // ==================================================
+  // GET /ranking/top10
+  // ==================================================
+  async getTop10RankingView(req: Request, res: Response) {
+    try {
+      const rows = await usuarioService.getTop10RankingView();
+      const response: ApiResponse<typeof rows> = {
+        success: true,
+        data: rows,
+        count: Array.isArray(rows) ? rows.length : 0
+      };
+      return res.json(response);
+    } catch (err: any) {
+      console.error("Error getTop10RankingView:", err);
+      return res.status(500).json({ success: false, message: err?.message || "Error consultando top10 ranking" });
+    }
+  }
+
+  // ==================================================
+  // GET /views?schema=mydb
+  // ==================================================
+  async listViews(req: Request, res: Response) {
+    try {
+      const schema = String(req.query.schema || "mydb");
+      const rows = await usuarioService.listViews(schema);
+      return res.json({ success: true, data: rows, count: Array.isArray(rows) ? rows.length : 0 });
+    } catch (err: any) {
+      console.error("Error listViews:", err);
+      return res.status(500).json({ success: false, message: err?.message || "Error listando vistas" });
+    }
+  }
+
+
 }
