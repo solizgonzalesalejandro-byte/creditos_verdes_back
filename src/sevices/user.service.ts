@@ -897,5 +897,113 @@ async getPerfilConsolidadoById(idusuario: number) {
   }
 }
 
+// ============================================
+// SP: sp_resumen_ganancias(p_fecha_ini, p_fecha_fin)
+// Devuelve: { global: {...}, desglose: [...], topCompradores: [...] }
+// ============================================
+async spResumenGanancias(fechaIni: string | Date, fechaFin: string | Date) {
+  if (!fechaIni || !fechaFin) throw new Error("fechaIni y fechaFin son requeridos");
+
+  try {
+    // CALL devuelve múltiples resultsets: [ rs1, rs2, rs3, ... ]
+    const [rows]: any = await db.query(`CALL sp_resumen_ganancias(?, ?)`, [fechaIni, fechaFin]);
+
+    // rows puede venir como:
+    // - un array donde rows[0] = resultset1, rows[1]=resultset2, rows[2]=resultset3
+    // - o directamente rows[0] conteniendo el primer resultset (dependiendo del driver)
+    const rs1 = Array.isArray(rows) && Array.isArray(rows[0]) ? rows[0] : (Array.isArray(rows) ? rows[0] : rows);
+    const rs2 = Array.isArray(rows) && rows.length > 1 ? rows[1] : [];
+    const rs3 = Array.isArray(rows) && rows.length > 2 ? rows[2] : [];
+
+    // Normalizar global (primer resultset, fila 0)
+    const globalRow = (Array.isArray(rs1) && rs1.length > 0) ? rs1[0] : (rs1 && rs1[0]) ? rs1[0] : null;
+    const global = {
+      total_compras: Number(globalRow?.total_compras ?? 0),
+      ventas_brutas_bs: Number(globalRow?.ventas_brutas_bs ?? 0),
+      ingresos_plataforma_bs: Number(globalRow?.ingresos_plataforma_bs ?? 0)
+    };
+
+    // Desglose (segundo resultset)
+    const desglose = Array.isArray(rs2) ? rs2.map((r: any) => ({
+      tipo: r.tipo ?? 'sin_tipo',
+      transacciones: Number(r.transacciones ?? 0),
+      monto_total_bs: Number(r.monto_total_bs ?? 0)
+    })) : [];
+
+    // Top compradores (tercer resultset)
+    const topCompradores = Array.isArray(rs3) ? rs3.map((r: any) => ({
+      idusuario: r.idusuario,
+      nombreUser: r.nombreUser,
+      num_compras: Number(r.num_compras ?? 0),
+      total_gastado_bs: Number(r.total_gastado_bs ?? 0)
+    })) : [];
+
+    return { global, desglose, topCompradores };
+  } catch (err: any) {
+    throw new Error(err?.message ?? 'Error en spResumenGanancias');
+  }
+}
+
+// ============================================
+// SP: sp_compra_creditos(p_usuario_id, p_montoBs, p_creditos, p_metodo)
+// Devuelve: { success: boolean, idcompra: number | null }
+// ============================================
+async spCompraCreditos(
+  usuarioId: number,
+  montoBs: number,
+  creditos: number,
+  metodo: string = 'tarjeta'
+) {
+  if (!usuarioId || !montoBs || !creditos) throw new Error('Parámetros inválidos: usuarioId, montoBs, creditos son requeridos');
+
+  try {
+    const [rows]: any = await db.query(`CALL sp_compra_creditos(?, ?, ?, ?)`, [
+      usuarioId,
+      montoBs,
+      creditos,
+      metodo
+    ]);
+
+    // El procedure retorna al final: SELECT v_idcomp AS idcompra;
+    // Dependiendo del driver rows puede ser:
+    // rows[0] -> [{ idcompra: 123 }]
+    // o rows -> [{ idcompra: 123 }]
+    let idcompra: number | null = null;
+    if (Array.isArray(rows) && rows.length > 0) {
+      // primer resultset
+      const first = rows[0];
+      if (Array.isArray(first) && first.length > 0 && first[0].idcompra !== undefined) {
+        idcompra = Number(first[0].idcompra);
+      } else if (first && first.idcompra !== undefined) {
+        idcompra = Number(first.idcompra);
+      } else if (rows[0] && rows[0].idcompra !== undefined) {
+        idcompra = Number(rows[0].idcompra);
+      }
+    } else if (rows && rows.idcompra !== undefined) {
+      idcompra = Number(rows.idcompra);
+    }
+
+    return { success: true, idcompra };
+  } catch (err: any) {
+    // Si el SP hace SIGNAL con message, vendrá en err.message
+    throw new Error(err?.message ?? 'Error en sp_compra_creditos');
+  }
+}
+
+// ============================================
+// SP: sp_confirmar_compra_creditos(p_idcomp, p_montoBs, p_metodo)
+// Devuelve: { success: boolean }
+// ============================================
+async spConfirmarCompraCreditos(idcomp: number, montoBs: number, metodo: string = 'tarjeta') {
+  if (!idcomp || !montoBs) throw new Error('Parámetros inválidos: idcomp y montoBs son requeridos');
+
+  try {
+    await db.query(`CALL sp_confirmar_compra_creditos(?, ?, ?)`, [idcomp, montoBs, metodo]);
+    return { success: true };
+  } catch (err: any) {
+    throw new Error(err?.message ?? 'Error en sp_confirmar_compra_creditos');
+  }
+}
+
 
 }

@@ -103,4 +103,16 @@ router.post("/publicacion", (req, res) => usuarioController.crearPublicacionSimp
 // router file (añádelo con las otras rutas)
 router.get("/perfil/me", usuarioController.getPerfilConsolidado.bind(usuarioController));
 
+// 1) Resumen de ganancias (GET)
+// Query: ?fechaIni=YYYY-MM-DD&fechaFin=YYYY-MM-DD
+router.get("/resumen/ganancias", usuarioController.resumenGanancias.bind(usuarioController));
+
+// 2) Ejecutar sp_compra_creditos (POST)
+// Body: { usuarioId, montoBs, creditos, metodo? }
+router.post("/sp/compra-creditos", usuarioController.compraCreditosSP.bind(usuarioController));
+
+// 3) Ejecutar sp_confirmar_compra_creditos (POST)
+// Body: { idcomp, montoBs, metodo? }
+router.post("/sp/confirmar-compra", usuarioController.confirmarCompraCreditos.bind(usuarioController));
+
 export default router;

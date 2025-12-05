@@ -709,5 +709,80 @@ async getPerfilConsolidado(req: Request, res: Response) {
   }
 }
 
+// GET /resumen/ganancias?fechaIni=YYYY-MM-DD&fechaFin=YYYY-MM-DD
+async resumenGanancias(req: Request, res: Response) {
+  try {
+    const fechaIni = (req.query.fechaIni as string) || (req.query.fecha_inicio as string);
+    const fechaFin = (req.query.fechaFin as string) || (req.query.fecha_fin as string);
+
+    if (!fechaIni || !fechaFin) {
+      return res.status(400).json({ success: false, message: "fechaIni y fechaFin son requeridos (YYYY-MM-DD)" });
+    }
+
+    // opcional: validar formato YYYY-MM-DD rápido
+    const d1 = new Date(fechaIni);
+    const d2 = new Date(fechaFin);
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) {
+      return res.status(400).json({ success: false, message: "Formato de fecha inválido" });
+    }
+
+    const result = await usuarioService.spResumenGanancias(fechaIni, fechaFin);
+    return res.json({ success: true, data: result });
+  } catch (err: any) {
+    console.error("Error resumenGanancias:", err);
+    return res.status(500).json({ success: false, message: err?.message || "Error consultando resumen de ganancias" });
+  }
+}
+
+// POST /sp/compra-creditos   body: { usuarioId, montoBs, creditos, metodo }
+async compraCreditosSP(req: Request, res: Response) {
+  try {
+    const { usuarioId, montoBs, creditos, metodo } = req.body;
+    if (![usuarioId, montoBs, creditos].every((v) => v !== undefined && v !== null && v !== '')) {
+      return res.status(400).json({ success: false, message: "usuarioId, montoBs y creditos son requeridos" });
+    }
+
+    const usuarioIdN = Number(usuarioId);
+    const montoN = Number(montoBs);
+    const creditosN = Number(creditos);
+    if ([usuarioIdN, montoN, creditosN].some((n) => Number.isNaN(n))) {
+      return res.status(400).json({ success: false, message: "Parámetros numéricos inválidos" });
+    }
+
+    const metodoStr = String(metodo ?? "tarjeta");
+
+    // Llamada a la versión del service que invoca el SP directamente
+    const result = await usuarioService.spCompraCreditos(usuarioIdN, montoN, creditosN, metodoStr);
+
+    return res.status(201).json({ success: true, data: result });
+  } catch (err: any) {
+    console.error("Error compraCreditosSP:", err);
+    return res.status(500).json({ success: false, message: err?.message ?? "Error ejecutando sp_compra_creditos" });
+  }
+}
+
+// POST /sp/confirmar-compra   body: { idcomp, montoBs, metodo }
+async confirmarCompraCreditos(req: Request, res: Response) {
+  try {
+    const { idcomp, montoBs, metodo } = req.body;
+    if (idcomp === undefined || montoBs === undefined) {
+      return res.status(400).json({ success: false, message: "idcomp y montoBs son requeridos" });
+    }
+
+    const idcompN = Number(idcomp);
+    const montoN = Number(montoBs);
+    if (Number.isNaN(idcompN) || Number.isNaN(montoN)) {
+      return res.status(400).json({ success: false, message: "idcomp o montoBs inválidos" });
+    }
+
+    const metodoStr = String(metodo ?? "tarjeta");
+
+    await usuarioService.spConfirmarCompraCreditos(idcompN, montoN, metodoStr);
+    return res.json({ success: true, message: "Compra confirmada" });
+  } catch (err: any) {
+    console.error("Error confirmarCompraCreditos:", err);
+    return res.status(500).json({ success: false, message: err?.message ?? "Error ejecutando sp_confirmar_compra_creditos" });
+  }
+}
 
 }
