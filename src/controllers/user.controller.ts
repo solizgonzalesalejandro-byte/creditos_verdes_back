@@ -752,6 +752,7 @@ async compraCreditosSP(req: Request, res: Response) {
     const metodoStr = String(metodo ?? "tarjeta");
 
     // Llamada a la versión del service que invoca el SP directamente
+    console.log("Llamando a spCompraCreditos con:", { usuarioIdN, montoN, creditosN, metodoStr });
     const result = await usuarioService.spCompraCreditos(usuarioIdN, montoN, creditosN, metodoStr);
 
     return res.status(201).json({ success: true, data: result });
@@ -782,6 +783,126 @@ async confirmarCompraCreditos(req: Request, res: Response) {
   } catch (err: any) {
     console.error("Error confirmarCompraCreditos:", err);
     return res.status(500).json({ success: false, message: err?.message ?? "Error ejecutando sp_confirmar_compra_creditos" });
+  }
+}
+
+async obtenerUsuario(req: Request, res: Response) {
+  try {
+    // aceptar id desde params (/usuario/:id), body o query
+    const rawId = req.params.id ?? req.body.id ?? req.query.id;
+
+    if (rawId === undefined || rawId === null || rawId === "") {
+      return res.status(400).json({ success: false, message: "id usuario es requerido (params|body|query)" });
+    }
+
+    const idN = Number(rawId);
+    if (Number.isNaN(idN) || !Number.isInteger(idN) || idN <= 0) {
+      return res.status(400).json({ success: false, message: "id usuario inválido" });
+    }
+
+    // Llamada al service que invoca el SP
+    console.log("Llamando a spObtenerUsuario con id:", idN);
+    const usuario = await usuarioService.spObtenerUsuario(idN);
+
+    // Si el servicio decide devolver null/undefined en vez de lanzar, manejarlo:
+    if (!usuario) {
+      return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+    }
+
+    return res.status(200).json({ success: true, data: usuario });
+  } catch (err: any) {
+    console.error("Error obtenerUsuario:", err);
+
+    // Si el SP lanzó SIGNAL con 'Usuario no encontrado' (mysql2 -> ER_SIGNAL_EXCEPTION),
+    // normalizamos a 404 para el cliente.
+    const sqlMsg = String(err?.sqlMessage ?? err?.message ?? "").toLowerCase();
+    if (err?.code === "ER_SIGNAL_EXCEPTION" || sqlMsg.includes("usuario no encontrado")) {
+      return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+    }
+
+    return res.status(500).json({ success: false, message: err?.message ?? "Error ejecutando sp_obtener_usuario" });
+  }
+}
+
+async compraSuscripcion(req: Request, res: Response) {
+  try {
+    const { usuarioId, meses, monto } = req.body;
+
+    // Validación básica
+    if ([usuarioId, meses, monto].some(v => v === undefined || v === null || v === "")) {
+      return res.status(400).json({
+        success: false,
+        message: "usuarioId, meses y monto son requeridos"
+      });
+    }
+
+    const usuarioIdN = Number(usuarioId);
+    const mesesN = Number(meses);
+    const montoN = Number(monto);
+
+    if ([usuarioIdN, mesesN, montoN].some(n => Number.isNaN(n))) {
+      return res.status(400).json({
+        success: false,
+        message: "usuarioId, meses y monto deben ser numéricos"
+      });
+    }
+
+    if (!Number.isInteger(mesesN) || mesesN <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "meses debe ser un entero positivo"
+      });
+    }
+
+    if (montoN <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "monto debe ser mayor a 0"
+      });
+    }
+
+    console.log("Llamando a spCompraSuscripcion con:", {
+      usuarioIdN,
+      mesesN,
+      montoN
+    });
+
+    const result = await usuarioService.spCompraSuscripcion(
+      usuarioIdN,
+      mesesN,
+      montoN
+    );
+
+    // Puedes normalizar el resultado si quieres, por ahora devolvemos tal cual
+    return res.status(201).json({
+      success: true,
+      data: result
+    });
+
+  } catch (err: any) {
+    console.error("Error compraSuscripcion:", err);
+
+    const sqlMsg = String(err?.sqlMessage ?? err?.message ?? "").toLowerCase();
+
+    // Si el SP hace SIGNAL con algún mensaje de negocio, puedes mapearlo aquí
+    if (err?.code === "ER_SIGNAL_EXCEPTION") {
+      return res.status(400).json({
+        success: false,
+        message: err?.sqlMessage ?? err?.message ?? "Error al procesar compra de suscripción"
+      });
+    }
+
+    if (sqlMsg.includes("usuario no encontrado")) {
+      return res.status(404).json({
+        success: false,
+        message: "Usuario no encontrado"
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: err?.message ?? "Error ejecutando sp_compra_suscripcion"
+    });
   }
 }
 

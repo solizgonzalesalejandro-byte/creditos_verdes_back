@@ -115,4 +115,8 @@ router.post("/sp/compra-creditos", usuarioController.compraCreditosSP.bind(usuar
 // Body: { idcomp, montoBs, metodo? }
 router.post("/sp/confirmar-compra", usuarioController.confirmarCompraCreditos.bind(usuarioController));
 
+router.get('/api/usuario/:id', usuarioController.obtenerUsuario);
+
+router.post('/api/compra-suscripcion', usuarioController.compraSuscripcion);
+
 export default router;

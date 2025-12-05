@@ -952,41 +952,78 @@ async spCompraCreditos(
   usuarioId: number,
   montoBs: number,
   creditos: number,
-  metodo: string = 'tarjeta'
+  metodo: string = "tarjeta"
 ) {
-  if (!usuarioId || !montoBs || !creditos) throw new Error('Parámetros inválidos: usuarioId, montoBs, creditos son requeridos');
+  if (!usuarioId || !montoBs || !creditos)
+    throw new Error(
+      "Parámetros inválidos: usuarioId, montoBs, creditos son requeridos"
+    );
 
   try {
-    const [rows]: any = await db.query(`CALL sp_compra_creditos(?, ?, ?, ?)`, [
+    // No destructuramos inicialmente: guardamos el resultado tal cual para inspección.
+    const result: any = await db.query(`CALL sp_compra_creditos(?, ?, ?, ?)`, [
       usuarioId,
       montoBs,
       creditos,
-      metodo
+      metodo,
     ]);
 
-    // El procedure retorna al final: SELECT v_idcomp AS idcompra;
-    // Dependiendo del driver rows puede ser:
-    // rows[0] -> [{ idcompra: 123 }]
-    // o rows -> [{ idcompra: 123 }]
+    // DEBUG: inspecciona el resultado real para ver su forma.
+    // Quita o comenta esta línea en producción.
+    console.dir(result, { depth: 4 });
+
+    // Normalizar `rows` desde distintos formatos que pueden devolver mysql/mysql2:
+    // - mysql2 (promise) normalmente devuelve [rows, fields]
+    // - rows para CALL suele ser un array de resultsets: [ [ { idcompra: 1 } ], ... ]
+    // - algunos drivers devuelven directamente rows
+    let rows: any = null;
+
+    if (Array.isArray(result) && result.length > 0) {
+      // si es [rows, fields] o [ resultset1, resultset2, ... ]
+      // preferimos tomar result[0] como candidateRows
+      rows = result[0];
+    } else {
+      rows = result;
+    }
+
+    // A partir de aquí `rows` puede ser:
+    // - un array con el primer resultset: [ { idcompra: 123 } ]
+    // - un array de resultsets: [ [ { idcompra: 123 } ], ... ]
+    // - un objeto que contiene idcompra directamente
     let idcompra: number | null = null;
+
+    // Caso: rows es array y su primer elemento es otro array (resultset)
     if (Array.isArray(rows) && rows.length > 0) {
-      // primer resultset
       const first = rows[0];
+
       if (Array.isArray(first) && first.length > 0 && first[0].idcompra !== undefined) {
         idcompra = Number(first[0].idcompra);
       } else if (first && first.idcompra !== undefined) {
+        // rows[0] es un objeto con idcompra
         idcompra = Number(first.idcompra);
       } else if (rows[0] && rows[0].idcompra !== undefined) {
+        // rows es array de objetos
         idcompra = Number(rows[0].idcompra);
       }
-    } else if (rows && rows.idcompra !== undefined) {
+    } else if (rows && typeof rows === "object" && rows.idcompra !== undefined) {
+      // Caso: rows es un objeto directo con idcompra
       idcompra = Number(rows.idcompra);
     }
 
     return { success: true, idcompra };
   } catch (err: any) {
-    // Si el SP hace SIGNAL con message, vendrá en err.message
-    throw new Error(err?.message ?? 'Error en sp_compra_creditos');
+    // Proporciona info más rica en el log para depuración
+    console.error("Error en spCompraCreditos - detalles:", {
+      message: err?.message,
+      code: err?.code,
+      sqlMessage: err?.sqlMessage,
+      stack: err?.stack,
+    });
+
+    // Si el SP lanzó SIGNAL con un message, suele venir en err.message o err.sqlMessage.
+    const mensaje = err?.message ?? err?.sqlMessage ?? "Error en sp_compra_creditos";
+    // Re-lanzamos con info útil (puedes ajustar el mensaje para no filtrar detalles sensibles)
+    throw new Error(`Error al procesar compra de créditos: ${mensaje}`);
   }
 }
 
@@ -1005,5 +1042,86 @@ async spConfirmarCompraCreditos(idcomp: number, montoBs: number, metodo: string 
   }
 }
 
+async spObtenerUsuario(p_idusuario: number) {
+  if (p_idusuario === undefined || p_idusuario === null || Number.isNaN(Number(p_idusuario))) {
+    throw new Error("p_idusuario es requerido y debe ser numérico");
+  }
+
+  try {
+    const result: any = await db.query(`CALL sp_obtener_usuario(?)`, [p_idusuario]);
+
+    // Normalizar/extraer el primer resultset de forma robusta
+    // result puede ser: [ rows, fields ] o [ [rows], ... ] dependiendo del driver/SP
+    let rowsCandidate: any;
+    if (Array.isArray(result) && result.length > 0) {
+      rowsCandidate = result[0];
+    } else {
+      rowsCandidate = result;
+    }
+
+    // rowsCandidate puede ser un array (resultset) o un objeto
+    const filas = Array.isArray(rowsCandidate) ? rowsCandidate : (rowsCandidate ? [rowsCandidate] : []);
+    const fila = filas[0] ?? null;
+
+    if (!fila) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Devolver la fila CRUDA exactamente como vino del driver
+    return fila;
+  } catch (err: any) {
+    console.error("Error en spObtenerUsuario - detalles:", {
+      message: err?.message,
+      code: err?.code,
+      sqlMessage: err?.sqlMessage,
+      sqlState: err?.sqlState,
+      stack: err?.stack,
+    });
+
+    const mensajeSql = err?.sqlMessage ?? err?.message ?? "";
+    if (err?.code === "ER_SIGNAL_EXCEPTION" || mensajeSql.toLowerCase().includes("usuario no encontrado")) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    throw new Error(err?.sqlMessage ?? err?.message ?? "Error en sp_obtener_usuario");
+  }
+}
+
+async spCompraSuscripcion(p_usuario_id: number, p_meses: number, p_monto: number) {
+  if (!p_usuario_id || !p_meses || !p_monto) {
+    throw new Error("p_usuario_id, p_meses y p_monto son requeridos");
+  }
+
+  try {
+    const result: any = await db.query(
+      `CALL sp_compra_suscripcion(?, ?, ?)`,
+      [p_usuario_id, p_meses, p_monto]
+    );
+
+    // Devuelve el resultado crudo tal cual (puede ser [rows, fields])
+    return result;
+
+  } catch (err: any) {
+    console.error("Error en spCompraSuscripcion - detalles:", {
+      message: err?.message,
+      code: err?.code,
+      sqlMessage: err?.sqlMessage,
+      sqlState: err?.sqlState,
+      stack: err?.stack,
+    });
+
+    const msg = err?.sqlMessage ?? err?.message ?? "Error en sp_compra_suscripcion";
+
+    // Detectar SIGNAL del SP
+    if (err?.code === "ER_SIGNAL_EXCEPTION") {
+      throw new Error(msg);
+    }
+
+    throw new Error(msg);
+  }
+}
 
 }
+
+// Tipo local (si no lo tienes importado)
+
