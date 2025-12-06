@@ -906,4 +906,25 @@ async compraSuscripcion(req: Request, res: Response) {
   }
 }
 
+async obtenerPlataformaIngresos(req: Request, res: Response) {
+  try {
+    console.log("Consultando plataforma_ingresos...");
+
+    const data = await usuarioService.obtenerPlataformaIngresos(); // ← función que ya te generé
+
+    return res.status(200).json({
+      success: true,
+      data
+    });
+
+  } catch (err: any) {
+    console.error("Error obtenerPlataformaIngresos:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err?.message ?? "Error al obtener los ingresos de la plataforma"
+    });
+  }
+}
+
 }

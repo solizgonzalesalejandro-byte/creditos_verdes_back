@@ -1121,6 +1121,30 @@ async spCompraSuscripcion(p_usuario_id: number, p_meses: number, p_monto: number
   }
 }
 
+async obtenerPlataformaIngresos() {
+  try {
+    const result: any = await db.query(
+      `SELECT * FROM plataforma_ingresos ORDER BY fecha DESC`
+    );
+
+    // result normalmente viene como [rows, fields]
+    return result[0]; // devuelve solo las filas
+
+  } catch (err: any) {
+    console.error("Error en obtenerPlataformaIngresos - detalles:", {
+      message: err?.message,
+      code: err?.code,
+      sqlMessage: err?.sqlMessage,
+      sqlState: err?.sqlState,
+      stack: err?.stack,
+    });
+
+    const msg = err?.sqlMessage ?? err?.message ?? "Error al obtener ingresos de la plataforma";
+    throw new Error(msg);
+  }
+}
+
+
 }
 
 // Tipo local (si no lo tienes importado)

@@ -119,4 +119,6 @@ router.get('/api/usuario/:id', usuarioController.obtenerUsuario);
 
 router.post('/api/compra-suscripcion', usuarioController.compraSuscripcion);
 
+router.get("/plataforma/ingresos", usuarioController.obtenerPlataformaIngresos.bind(usuarioController));
+
 export default router;
