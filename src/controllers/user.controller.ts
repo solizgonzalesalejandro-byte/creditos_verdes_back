@@ -106,7 +106,7 @@ export class UsuarioController {
   try {
     console.log("obteniendo categorias");
 
-    const data = await usuarioService.obtenerPlataformaIngresos(); // ← función que ya te generé
+    const data = await usuarioService.obtenerCategorias(); // ← función que ya te generé
 
     return res.status(200).json({
       success: true,
@@ -203,10 +203,13 @@ export class UsuarioController {
   async iniciarCompraConCreditoVerde(req: Request, res: Response) {
     try {
       const { compradorId, idpublicacion, cantidad } = req.body;
+      console.log(req.body)
       if (![compradorId, idpublicacion, cantidad].every(Boolean)) return res.status(400).json({ success:false, message: "Faltan parámetros" });
       const result = await usuarioService.iniciarCompraConCreditoVerde(Number(compradorId), Number(idpublicacion), Number(cantidad));
+      console.log(result)
       return res.json({ success: true, data: result });
     } catch (err: any) {
+      console.log(err)
       return res.status(500).json({ success:false, message: err.message });
     }
   }

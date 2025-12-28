@@ -155,17 +155,26 @@ export class UsuarioService {
    * Iniciar compra con crédito verde (devuelve idintercambio)
    */
   async iniciarCompraConCreditoVerde(compradorId: number, idpublicacion: number, cantidad: number) {
-    try {
-      await db.query(
-        `CALL sp_iniciar_compra_con_credito_verde(?, ?, ?, @p_idintercambio)`,
-        [compradorId, idpublicacion, cantidad]
-      );
-      const [rows]: any = await db.query(`SELECT @p_idintercambio as idintercambio`);
-      return { idintercambio: rows[0]?.idintercambio ?? null };
-    } catch (err: any) {
-      throw new Error(err?.message ?? "Error en sp_iniciar_compra_con_credito_verde");
+  try {
+    await db.query(
+      `CALL sp_iniciar_compra_con_credito_verde(?, ?, ?, @p_idintercambio)`,
+      [compradorId, idpublicacion, cantidad]
+    );
+
+    const [rows]: any = await db.query(`SELECT @p_idintercambio as idintercambio`);
+    const idintercambio = rows[0]?.idintercambio;
+
+    if (!idintercambio) {
+      throw new Error("No se generó el idintercambio");
     }
+
+    return { idintercambio };
+  } catch (err: any) {
+    console.log(err);
+    throw new Error(err?.message ?? "Error en sp_iniciar_compra_con_credito_verde");
   }
+}
+
 
   /**
    * Liberar pago (completa intercambio)
@@ -1198,10 +1207,9 @@ async obtenerPlataformaIngresos() {
 async getTotal() {
     try {
       const sql = `SELECT
-    YEARWEEK(fechaCompra, 1) AS semana_inicio,
-    COUNT(*) AS cantidad_ventas,
-    SUM(montoBs) AS total_ventas
-FROM compra_credito
+    YEARWEEK(fechaCreacion, 1) AS semana_inicio,
+    COUNT(*) AS cantidad_ventas
+FROM intercambio
 -- opcional: filtrar solo compras completadas si hay un estado, ej: WHERE estado = 'completada'
 GROUP BY semana_inicio
 ORDER BY semana_inicio;`;
