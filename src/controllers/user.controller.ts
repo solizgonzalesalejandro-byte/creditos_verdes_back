@@ -102,6 +102,27 @@ export class UsuarioController {
     }
   }
 
+  async obtenerCategorias(req: Request, res: Response) {
+  try {
+    console.log("obteniendo categorias");
+
+    const data = await usuarioService.obtenerPlataformaIngresos(); // ← función que ya te generé
+
+    return res.status(200).json({
+      success: true,
+      data
+    });
+
+  } catch (err: any) {
+    console.error("Error obtenerCategorias:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err?.message ?? "Error al obtener las categorias"
+    });
+  }
+}
+
   async cancelarIntercambioActor(req: Request, res: Response) {
     try {
       const { idIntercambio, actorUsuarioId } = req.body;
@@ -148,7 +169,7 @@ export class UsuarioController {
 
   async publicarConImpacto(req: Request, res: Response) {
     try {
-      const { usuarioId, nombreCategoria, unidadMedida, titulo, descripcion, valorCredito, cantidadUnidad } = req.body;
+      const { usuarioId, nombreCategoria, unidadMedida, titulo, descripcion, valorCredito, cantidadUnidad,foto } = req.body;
       if (![usuarioId, nombreCategoria, unidadMedida, titulo, valorCredito, cantidadUnidad].every(Boolean)) {
         return res.status(400).json({ success:false, message: "Faltan parámetros" });
       }
@@ -159,7 +180,8 @@ export class UsuarioController {
         String(titulo),
         String(descripcion || ""),
         Number(valorCredito),
-        Number(cantidadUnidad)
+        Number(cantidadUnidad),
+        String(foto)
       );
       return res.json({ success: true, data: result });
     } catch (err: any) {
@@ -926,5 +948,20 @@ async obtenerPlataformaIngresos(req: Request, res: Response) {
     });
   }
 }
+
+async getTotal(req: Request, res: Response) {
+    try {
+      const rows = await usuarioService.getTotal();
+      const response: ApiResponse<typeof rows> = {
+        success: true,
+        data: rows,
+        count: Array.isArray(rows) ? rows.length : 0
+      };
+      return res.json(response);
+    } catch (err: any) {
+      console.error("Error getTotal:", err);
+      return res.status(500).json({ success: false, message: err?.message || "Error consultando total" });
+    }
+  }
 
 }

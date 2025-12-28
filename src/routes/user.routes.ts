@@ -63,6 +63,8 @@ router.get("/historico/consolidado", usuarioController.getHistoricoConsolidado.b
 // Extracto de billetera por nombreUser (query: ?nombreUser=ale1234&limit=200)
 router.get("/billetera/extracto", usuarioController.getExtractoBilletera.bind(usuarioController));
 
+router.get("/categorias", usuarioController.obtenerCategorias.bind(usuarioController));
+
 // Historial de compra de créditos
 router.get("/compras/creditos", usuarioController.getCompraCreditos.bind(usuarioController));
 
@@ -120,5 +122,7 @@ router.get('/api/usuario/:id', usuarioController.obtenerUsuario);
 router.post('/api/compra-suscripcion', usuarioController.compraSuscripcion);
 
 router.get("/plataforma/ingresos", usuarioController.obtenerPlataformaIngresos.bind(usuarioController));
+
+router.get("/total",usuarioController.getTotal.bind(usuarioController))
 
 export default router;

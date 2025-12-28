@@ -119,13 +119,14 @@ export class UsuarioService {
     titulo: string,
     descripcion: string,
     valorCredito: number,
-    cantidadUnidad: number
+    cantidadUnidad: number,
+    foto: string
   ) {
     try {
       // Usamos variable de sesión para capturar OUT param
       await db.query(
-        `CALL sp_publicar_con_impacto(?, ?, ?, ?, ?, ?, ?, @p_idpublicacion)`,
-        [usuarioId, nombreCategoria, unidadMedida, titulo, descripcion, valorCredito, cantidadUnidad]
+        `CALL sp_publicar_con_impacto(?, ?, ?, ?, ?, ?, ?,?, @p_idpublicacion)`,
+        [usuarioId, nombreCategoria, unidadMedida, titulo, descripcion, valorCredito, cantidadUnidad,foto]
       );
       const [rows]: any = await db.query(`SELECT @p_idpublicacion as idpublicacion`);
       return { idpublicacion: rows[0]?.idpublicacion ?? null };
@@ -210,15 +211,6 @@ export class UsuarioService {
       [usuario.idusuario]
     );
     const rolesUsuario: string[] = (rrows || []).map((r: any) => r.nombreRol);
-
-    // 3) Si el cliente envió roles solicitados, verificar intersección
-    if (Array.isArray(rolesSolicitados) && rolesSolicitados.length > 0) {
-      const tieneAlguno = rolesSolicitados.some((rol) => rolesUsuario.includes(rol));
-      if (!tieneAlguno) {
-        await this.registrarAcceso(nombreUser, "", "", false, "Roles no autorizados");
-        return { success: false, status: 403, message: "No tienes los roles requeridos" };
-      }
-    }
 
     // 4) Registrar acceso exitoso y devolver datos
     await this.registrarAcceso(nombreUser, "", "", true, "Login OK");
@@ -593,6 +585,31 @@ async eliminarPublicacion(idpublicacion: number) {
   }
 }
 
+async obtenerCategorias() {
+  try {
+    const result: any = await db.query(
+      `SELECT * FROM catalogo_categoria`
+    );
+
+    // result normalmente viene como [rows, fields]
+    return result[0]; // devuelve solo las filas
+
+  } catch (err: any) {
+    console.error("Error en obtenerCategorias - detalles:", {
+      message: err?.message,
+      code: err?.code,
+      sqlMessage: err?.sqlMessage,
+      sqlState: err?.sqlState,
+      stack: err?.stack,
+    });
+
+    const msg = err?.sqlMessage ?? err?.message ?? "Error al obtener categorias de la plataforma";
+    throw new Error(msg);
+  }
+}
+
+
+
 // Compra de créditos (llama el SP sp_compra_creditos y devuelve idcompra)
 async compraCreditos(usuarioId: number, montoBs: number, creditos: number, metodo: string = 'tarjeta') {
   if (!usuarioId || !montoBs || !creditos) throw new Error('Parámetros inválidos');
@@ -651,7 +668,41 @@ async modificarPublicacion(
   // ============================================
   async getImpactoSemana() {
     try {
-      const sql = `SELECT * FROM v_impacto_semana ORDER BY semana_inicio DESC`;
+      const sql = `SELECT
+    YEARWEEK(fecha, 1) AS semana_inicio,  -- Número de semana del año (modo 1: lunes inicio)
+    SUM(impactoCO2) AS CO2,
+    SUM(impactoEnergia) AS Energia,
+    SUM(impactoAgua) AS Agua,
+    SUM(impactoCO2 + impactoEnergia + impactoAgua) AS Total
+FROM (
+    -- Impacto por publicaciones
+    SELECT 
+        p.fechaPublicacion AS fecha,
+        SUM(c.cantidadUnidad * te.factorCO2) AS impactoCO2,
+        SUM(c.cantidadUnidad * te.factorEnergiaKwh) AS impactoEnergia,
+        SUM(c.cantidadUnidad * te.factorAguaLitro) AS impactoAgua
+    FROM publicacion p
+    JOIN categoria c ON c.publicacion_id = p.idpublicacion
+    JOIN tabla_equivalencia te ON te.idtablaEquivalencia = c.tablaEquivalencia_id
+    GROUP BY p.idpublicacion, p.fechaPublicacion
+
+    UNION ALL
+
+    -- Impacto por intercambios
+    SELECT 
+        i.fechaCreacion AS fecha,
+        SUM(mc.monto * te.factorCO2) AS impactoCO2,
+        SUM(mc.monto * te.factorEnergiaKwh) AS impactoEnergia,
+        SUM(mc.monto * te.factorAguaLitro) AS impactoAgua
+    FROM intercambio i
+    JOIN custodio_credito cc ON cc.idcustodioCredito = i.custodioCredito_id
+    JOIN movimiento_credito mc ON mc.intercambio_id = i.idintercambio
+    JOIN tabla_equivalencia te ON te.unidadMedida = 'credito_verde'  -- Ajusta según unidad
+    GROUP BY i.idintercambio, i.fechaCreacion
+) AS impacto
+GROUP BY semana_inicio
+ORDER BY semana_inicio;
+`;
       const [rows]: any = await db.query(sql);
       return rows;
     } catch (err: any) {
@@ -1144,6 +1195,22 @@ async obtenerPlataformaIngresos() {
   }
 }
 
+async getTotal() {
+    try {
+      const sql = `SELECT
+    YEARWEEK(fechaCompra, 1) AS semana_inicio,
+    COUNT(*) AS cantidad_ventas,
+    SUM(montoBs) AS total_ventas
+FROM compra_credito
+-- opcional: filtrar solo compras completadas si hay un estado, ej: WHERE estado = 'completada'
+GROUP BY semana_inicio
+ORDER BY semana_inicio;`;
+      const [rows]: any = await db.query(sql);
+      return rows;
+    } catch (err: any) {
+      throw new Error(err?.message ?? 'Error en getTotal');
+    }
+  }
 
 }
 
